@@ -8,7 +8,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -21,10 +21,9 @@ jobs:
 
       - name: Prepare Web Assets
         run: |
-          # Garante que a pasta public existe e o index.html está lá
           mkdir -p public
           if [ ! -f "index.html" ]; then
-            echo "<(!DOCTYPE html><html><body><h1>App Default</h1></body></html>)" > public/index.html
+            echo "<!DOCTYPE html><html><body><h1>App Default</h1></body></html>" > public/index.html
           else
             cp index.html public/index.html
           fi
@@ -46,7 +45,6 @@ jobs:
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ]; then
-            # Insere as permissoes de MediaProjection logo abaixo da tag de internet
             sed -i '/<uses-permission android:name="android.permission.INTERNET"/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>' $MANIFEST
           else
             echo "Erro: AndroidManifest.xml nao encontrado!"
