@@ -6,34 +6,43 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Cordova / Capacitor CLI
-        run: npm install -g @capacitor/cli @capacitor/core
-      - name: Create App Project
+
+      - name: Create Capacitor App
         run: |
-          npx @capacitor/cli create myapp com.meuapp.midia myapp --web-dir .
-          cd myapp
-          npm install @capacitor/android
+          mkdir public
+          cp index.html public/ 2>/dev/null || true
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "MeuAppMedia" "com.meuapp.midia" --web-dir public
           npx cap add android
+
       - name: Inject MediaProjection Permissions
         run: |
-          # Adiciona as permissoes necessarias no AndroidManifest automaticamente
-          MANIFEST="myapp/android/app/src/main/AndroidManifest.xml"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i '/<uses-permission android:name="android.permission.INTERNET"/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>' $MANIFEST
+
+      - name: Sync Capacitor
+        run: npx cap copy android
+
       - name: Build APK via Gradle
         run: |
-          cd myapp/android
+          cd android
+          chmod +x gradlew
           ./gradlew assembleDebug
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: myapp/android/app/build/outputs/apk/debug/app-debug.app
+          path: android/app/build/outputs/apk/debug/app-debug.apk
