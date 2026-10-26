@@ -1,5 +1,6 @@
 name: Build Android APK
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,28 +19,49 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Create Capacitor App
+      - name: Prepare Web Assets
         run: |
-          mkdir public
-          cp index.html public/ 2>/dev/null || true
+          # Garante que a pasta public existe e o index.html está lá
+          mkdir -p public
+          if [ ! -f "index.html" ]; then
+            echo "<(!DOCTYPE html><html><body><h1>App Default</h1></body></html>)" > public/index.html
+          else
+            cp index.html public/index.html
+          fi
+
+      - name: Install Capacitor & Dependencies
+        run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "MeuAppMedia" "com.meuapp.midia" --web-dir public
+
+      - name: Init Capacitor Config
+        run: |
+          npx cap init "MediaApp" "com.seuapp.media" --web-dir public
+
+      - name: Add Android Platform
+        run: |
           npx cap add android
 
       - name: Inject MediaProjection Permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          sed -i '/<uses-permission android:name="android.permission.INTERNET"/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>' $MANIFEST
+          if [ -f "$MANIFEST" ]; then
+            # Insere as permissoes de MediaProjection logo abaixo da tag de internet
+            sed -i '/<uses-permission android:name="android.permission.INTERNET"/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>' $MANIFEST
+          else
+            echo "Erro: AndroidManifest.xml nao encontrado!"
+            exit 1
+          fi
 
-      - name: Sync Capacitor
-        run: npx cap copy android
+      - name: Copy Web Files to Android
+        run: |
+          npx cap copy android
 
       - name: Build APK via Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
